@@ -2797,7 +2797,7 @@ var MM = com.modestmaps = {
                     coord = coord.zoomTo(minZoom);
                 }
                 else if (coord.zoom > maxZoom) {
-                    coord = coord.zoomTo(maxZoom);
+                    //coord = coord.zoomTo(maxZoom);
                 }
             }
             return coord;

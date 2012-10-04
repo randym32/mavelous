@@ -17,23 +17,29 @@ $(function() {
       taps: [],
       wasPinching: false,
       lastPinchCenter: null,
+      mouseSubscribed:false,
+      panner:null,
 
       init: function(map, options) {
           this.map = map;
           options = options || {};
-
-          // Fail early if this isn't a touch device.
-          if (!this.isTouchable()) return false;
+          this.panner = panning(map, 0.10);
 
           this._touchStartMachine = MM.bind(this.touchStartMachine, this);
           this._touchMoveMachine = MM.bind(this.touchMoveMachine, this);
           this._touchEndMachine = MM.bind(this.touchEndMachine, this);
+
+          if (this.isTouchable()) {
           MM.addEvent(map.parent, 'touchstart',
                       this._touchStartMachine);
           MM.addEvent(map.parent, 'touchmove',
                       this._touchMoveMachine);
           MM.addEvent(map.parent, 'touchend',
                       this._touchEndMachine);
+          }
+          // Add in mouse events, these will be mapped to touches
+          MM.addEvent(map.parent, 'mousedown', this._touchStartMachine);
+          MM.addEvent(document, 'mouseup', this._touchEndMachine);
 
           this.options = {};
           this.options.snapToZoom = options.snapToZoom || true;
@@ -46,8 +52,9 @@ $(function() {
       },
 
       remove: function() {
+          this.panner.remove();
           // Fail early if this isn't a touch device.
-          if (!this.isTouchable()) return false;
+//          if (!this.isTouchable()) return false;
 
           MM.removeEvent(this.map.parent, 'touchstart',
                          this._touchStartMachine);
@@ -87,12 +94,28 @@ $(function() {
 
       touchStartMachine: function(e) {
           //console.log('touchStartMachine @' + new Date().getTime() + ' ms');
+          // synthesize event if mouse event
+          if (typeof e.touches === "undefined") {
+              e ={touches:[e]};
+              if (!this.mouseSubscribed){
+                 MM.addEvent(this.map.parent, 'mousemove', this._touchMoveMachine);
+                 this.mouseSubscribed=true;
+              }
+          }
           this.updateTouches(e);
+          this.panner.down(e.touches[0]);
           return MM.cancelEvent(e);
       },
 
       touchMoveMachine: function(e) {
           //console.log('touchMoveMachine @' + new Date().getTime() + ' ms');
+          // synthesize event if mouse event
+          if (typeof e.touches === "undefined") {
+              // Check for a weird case where we don't get the up
+              if (!this.mouseSubscribed) return;
+              if (!(e.button > 0 || e.which > 0)) return;
+              e ={touches:[e]};
+          }
           switch (e.touches.length) {
           case 1:
               this.onPanning(e.touches[0]);
@@ -108,11 +131,23 @@ $(function() {
       touchEndMachine: function(e) {
           var now = new Date().getTime();
           //console.log('touchEndMachine @' + new Date().getTime() + ' ms');
+          // synthesize event if mouse event
+          if (typeof e.touches === "undefined") {
+              if (!this.mouseSubscribed) return;
+              e ={touches:[e], changedTouches:[]};
+              MM.removeEvent(this.map.parent, 'mousemove',
+                         this._touchMoveMachine);
+              MM.removeEvent(document, 'mousemove',
+                         this._touchMoveMachine);
+              this.mouseSubscribed=false;
+          }
           // round zoom if we're done pinching
           if (e.touches.length === 0 && this.wasPinching) {
               //console.log('touchEndMachine: discarded because e.touches.length === 0 && this.wasPinching');
               this.onPinched(this.lastPinchCenter);
           }
+
+          this.panner.up();
 
           // Look at each changed touch in turn.
           for (var i = 0; i < e.changedTouches.length; i += 1) {
@@ -193,6 +228,7 @@ $(function() {
 
       // Re-transform the actual map parent's CSS transformation
       onPanning: function(touch) {
+          this.panner.move(touch);
       },
 
       onPinching: function(e) {

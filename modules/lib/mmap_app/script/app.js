@@ -1,5 +1,14 @@
 
 $(function(){ 
+  // Access the preferences in the local storage
+  Mavelous.setPref = function(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+  };
+
+  Mavelous.pref = function(key) {
+     var value = localStorage.getItem(key);
+    return value && JSON.parse(value);
+  };
 
   var mavlinkAPI = new Mavelous.MavlinkAPI({ url: '/mavlink/' });
 
@@ -113,6 +122,40 @@ $(function(){
   setInterval(function() {
     mavlinkAPI.update();
   }, 100); 
+
+  // default location
+  // dummy for demo purposes
+  var X = {lat: 44.7486, lon: -93.29, zoom: 16 };
+
+  // Get the last location
+  var center = Mavelous.pref('center');
+  if (center) {
+    X.lat = center.lat || X.lat;
+    X.lon = center.lon || X.lon;
+  }
+  // Get the last zoom location
+  var zoom = Mavelous.pref('zoom');
+  X.zoom = zoom || X.zoom;
+
+   // based on whether we can get the app's geolocation, use that
+// REMOVE the false to use the local storage and/or geolocation.  
+// It is there to make it easy to demo the zoom level
+   if (navigator.geolocation && false) {
+    var location_timeout = setTimeout(function(){mmapModel.lateInit(X);}, 10000);
+
+    navigator.geolocation.getCurrentPosition(function(position) {
+        clearTimeout(location_timeout);
+        X.lat = position.coords.latitude;
+        X.lon = position.coords.longitude;
+        mmapModel.lateInit(X);
+    }, function(error) {
+        clearTimeout(location_timeout);
+        mmapModel.lateInit(X);
+    });
+  } else {
+    // Fallback for no geolocation
+    mmapModel.lateInit(X);
+  }
 
 
 });

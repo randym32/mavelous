@@ -1,4 +1,12 @@
 // namespacing!
+$(function(){
+  window.Mavelous = window.Mavelous || {};
+  Mavelous . privateProvider = function(c) {
+    // var base url
+    // var separator (/ or -)//
+    return 'tile/' + [ c.zoom, c.column, c.row ].join('/') + '.jpg';
+    };
+});
 if (!MM) {
   MM = { };
 }
@@ -33,13 +41,20 @@ MM.BingProvider = function(key, style, onready) {
 
     window.onBingComplete = function(data) {
         var resourceSets = data.resourceSets;
-        for (var i = 0; i < resourceSets.length; i++) {
-            var resources = data.resourceSets[i].resources;
-            for (var j = 0; j < resources.length; j++) {
-                var resource = resources[j];
+        var f = Mavelous . privateProvider ;
+        if (resourceSets.length > 0) {
+            var resources = data.resourceSets[0].resources;
+            if (resources.length > 0) {
+                var resource = resources[0];
 
                 var serverSalt = Math.floor(Math.random() * 4);
-                provider.getTile = function(coord) {
+                f = function(coord) {
+                    // Shift to local provider when zoomed in tight
+                    if (coord.zoom > 18) {
+                        var ret = Mavelous.privateProvider(coord);
+                        if (ret) return ret;
+                    }
+
                     var quadKey = toMicrosoft(coord.column, coord.row, coord.zoom);
                     // this is so that requests will be consistent in this session, rather than totally random
                     var server = Math.abs(serverSalt + coord.column + coord.row + coord.zoom) % 4;
@@ -52,6 +67,8 @@ MM.BingProvider = function(key, style, onready) {
                 // TODO: use resource.imageHeight
             }
         }
+
+        provider.getTile = f;
 
         // TODO: display data.brandLogoUri
         // TODO: display data.copyright
