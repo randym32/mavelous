@@ -23,7 +23,7 @@ $(function() {
       init: function(map, options) {
           this.map = map;
           options = options || {};
-          this.panner = panning(map, 0.10);
+          /*this.panner = panning(map, 0.10); */
 
           this._touchStartMachine = MM.bind(this.touchStartMachine, this);
           this._touchMoveMachine = MM.bind(this.touchMoveMachine, this);
@@ -52,7 +52,9 @@ $(function() {
       },
 
       remove: function() {
-          this.panner.remove();
+          if (null != this.panner) {
+             this.panner.remove();
+          }
           // Fail early if this isn't a touch device.
 //          if (!this.isTouchable()) return false;
 
@@ -103,7 +105,9 @@ $(function() {
               }
           }
           this.updateTouches(e);
-          this.panner.down(e.touches[0]);
+          if (null != this.panner) {
+             this.panner.down(e.touches[0]);
+          }
           return MM.cancelEvent(e);
       },
 
@@ -147,7 +151,9 @@ $(function() {
               this.onPinched(this.lastPinchCenter);
           }
 
-          this.panner.up();
+          if (null != this.panner) {
+             this.panner.up();
+          }
 
           // Look at each changed touch in turn.
           for (var i = 0; i < e.changedTouches.length; i += 1) {
@@ -228,7 +234,9 @@ $(function() {
 
       // Re-transform the actual map parent's CSS transformation
       onPanning: function(touch) {
-          this.panner.move(touch);
+          if (null != this.panner) {
+            this.panner.move(touch);
+          }
       },
 
       onPinching: function(e) {
